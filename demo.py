@@ -4,21 +4,21 @@ import zhipuai
 from zhipuai import ZhipuAI
 import os
 from dotenv import load_dotenv, find_dotenv
+
+# 加载环境变量
 load_dotenv(find_dotenv())
 
+# 获取 API Key
 ZHIPU_API_KEY = os.getenv("ZHIPU_API_KEY")
 ALI_API_KEY = os.getenv("ALI_API_KEY")
 
 # 初始化 API 客户端
 ali_client = openai.OpenAI(
     api_key=ALI_API_KEY,
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"  # 阿里云的 API 地址
+    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
 )
 
 zhipu_client = ZhipuAI(api_key=ZHIPU_API_KEY)
-
-# 存储对话历史
-chat_history = []
 
 # 检查 API 设置是否正确
 try:
@@ -35,14 +35,12 @@ try:
 except Exception as e:
     print(f"API 可能有问题，请检查：{e}")
 
-
-
 # 处理阿里云 API 响应
 def get_aliyun_response(messages):
     response = ali_client.chat.completions.create(
         model="qwen-plus",
         messages=messages,
-        stream=False  # 同步请求
+        stream=False
     )
     return response.choices[0].message.content
 
@@ -54,38 +52,41 @@ def get_zhipuai_response(messages):
     )
     return response.choices[0].message.content
 
-# 统一封装函数，实现多轮对话
-def chat_with_llm(user_input, model_choice):
-    global chat_history
-
+# 统一封装函数，实现多轮对话并展示历史记录
+def chat_with_llm(user_input, model_choice, chat_history):
     # 添加当前用户输入到历史记录
-    chat_history.append({"role": "user", "content": user_input})
+    chat_history.append(["用户", user_input])
+
+    messages = [{"role": "user", "content": user_input}]
 
     # 选择调用对应的模型
     if model_choice == "Qwen":
-        response_content = get_aliyun_response(chat_history)
+        response_content = get_aliyun_response(messages)
     elif model_choice == "ZHIPU":
-        response_content = get_zhipuai_response(chat_history)
+        response_content = get_zhipuai_response(messages)
     else:
-        return "请选择一个有效的模型！"
+        return chat_history + [["系统", "请选择一个有效的模型！"]]
 
     # 记录 AI 的回复到历史记录
-    chat_history.append({"role": "assistant", "content": response_content})
+    chat_history.append(["AI", response_content])
 
-    return response_content
+    return chat_history
 
-# 构建 Gradio UI
-with gr.Blocks() as demo:
-    gr.Markdown("# LLM 多轮对话界面")
-    
-    with gr.Row():
+if __name__ == "__main__":
+    chat_history = []  # 初始化对话历史
+
+    # 构建 Gradio UI
+    with gr.Blocks() as demo:
+        gr.Markdown("# LLM 多轮对话界面")
+        
+        with gr.Row():
+            model_choice = gr.Radio(["Qwen", "ZHIPU"], label="选择大模型")
+
+        chatbot = gr.Chatbot(label="对话历史")
         user_input = gr.Textbox(label="输入你的问题")
-        model_choice = gr.Radio(["Qwen", "ZHIPU"], label="选择大模型")
+        chat_button = gr.Button("发送")
 
-    chat_button = gr.Button("发送")
-    output = gr.Textbox(label="LLM 回复")
+        chat_button.click(chat_with_llm, inputs=[user_input, model_choice, chatbot], outputs=chatbot)
 
-    chat_button.click(chat_with_llm, inputs=[user_input, model_choice], outputs=output)
-
-# 启动 Gradio 界面
-demo.launch()
+    # 启动 Gradio 界面
+    demo.launch()
