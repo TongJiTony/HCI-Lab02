@@ -1,0 +1,17 @@
+name: py312
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  - pip
+  - openai
+  - gradio
+  - zhipuai
+  - python-dotenv
+  - requests
+  - numpy
+  - pandas
+  - matplotlib
+  - tqdm
+  - jupyterlab

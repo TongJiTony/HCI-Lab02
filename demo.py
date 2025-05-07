@@ -53,40 +53,37 @@ def get_zhipuai_response(messages):
     return response.choices[0].message.content
 
 # 统一封装函数，实现多轮对话并展示历史记录
-def chat_with_llm(user_input, model_choice, chat_history):
+def chat_with_llm(user_input, chat_history_ali, chat_history_glm):
     # 添加当前用户输入到历史记录
-    chat_history.append(["用户", user_input])
+    chat_history_ali.append({"role": "user", "content": user_input})
+    chat_history_glm.append({"role": "user", "content": user_input})
 
-    messages = [{"role": "user", "content": user_input}]
+    chat_history_ali.append({"role": "assistant", "content": get_aliyun_response(chat_history_ali)})
+    chat_history_glm.append({"role": "assistant", "content": get_zhipuai_response(chat_history_glm)})
 
-    # 选择调用对应的模型
-    if model_choice == "Qwen":
-        response_content = get_aliyun_response(messages)
-    elif model_choice == "ZHIPU":
-        response_content = get_zhipuai_response(messages)
-    else:
-        return chat_history + [["系统", "请选择一个有效的模型！"]]
-
-    # 记录 AI 的回复到历史记录
-    chat_history.append(["AI", response_content])
-
-    return chat_history
+    return "", chat_history_ali, chat_history_glm
 
 if __name__ == "__main__":
-    chat_history = []  # 初始化对话历史
-
     # 构建 Gradio UI
     with gr.Blocks() as demo:
-        gr.Markdown("# LLM 多轮对话界面")
-        
+        gr.Markdown("# Zixun's Agent: Ask Multiple LLMs At The Same Time 多模型同时对话")
         with gr.Row():
-            model_choice = gr.Radio(["Qwen", "ZHIPU"], label="选择大模型")
+            with gr.Column(scale=1):
+                gr.Markdown("### 阿里云Qwen-Plus")
+                chatbot_ali = gr.Chatbot(label="对话记录", type='messages')
+            with gr.Column(scale=1):
+                gr.Markdown("### 智谱GLM-4-Flush")
+                chatbot_glm = gr.Chatbot(label="对话记录", type='messages')
 
-        chatbot = gr.Chatbot(label="对话历史")
-        user_input = gr.Textbox(label="输入你的问题")
+        user_input = gr.Textbox(
+            label="请输入你的问题",
+            value="你好，请问你是谁？"  # 设置预设问题
+        )
         chat_button = gr.Button("发送")
 
-        chat_button.click(chat_with_llm, inputs=[user_input, model_choice, chatbot], outputs=chatbot)
+        chat_button.click(chat_with_llm, 
+        inputs=[user_input, chatbot_ali, chatbot_glm], 
+        outputs=[user_input, chatbot_ali,chatbot_glm])
 
     # 启动 Gradio 界面
     demo.launch()
