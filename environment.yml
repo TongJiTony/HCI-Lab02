@@ -9,9 +9,3 @@ dependencies:
   - gradio
   - zhipuai
   - python-dotenv
-  - requests
-  - numpy
-  - pandas
-  - matplotlib
-  - tqdm
-  - jupyterlab
